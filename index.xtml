@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Emergency Calls - Global</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Emergency">
+    <meta name="theme-color" content="#b91c1c">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #b91c1c; color: #fff; min-height: 100vh; }
+        .container { max-width: 500px; margin: 0 auto; padding: 1rem; }
+        .header { text-align: center; padding: 2rem 0 1rem; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+        .header p { opacity: 0.8; font-size: 0.9rem; margin-bottom: 1rem; }
+        .lang-select { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; }
+        .lang-select button { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
+        .lang-select button.active { background: #fff; color: #b91c1c; font-weight: bold; }
+        .search-box { width: 100%; padding: 0.8rem 1rem; border-radius: 25px; border: none; font-size: 1rem; margin-bottom: 1rem; background: rgba(255,255,255,0.15); color: #fff; outline: none; }
+        .search-box::placeholder { color: rgba(255,255,255,0.6); }
+        .country-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); border-radius: 16px; padding: 1rem; margin-bottom: 0.8rem; }
+        .country-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; }
+        .country-name { font-size: 1.1rem; font-weight: bold; }
+        .country-capital { font-size: 0.75rem; opacity: 0.7; }
+        .number-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+        .call-btn { background: #fff; color: #b91c1c; font-weight: bold; padding: 0.5rem 0.8rem; border-radius: 30px; text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem; }
+        .call-btn:active { transform: scale(0.95); }
+        .no-results { text-align: center; padding: 2rem; opacity: 0.7; }
+        .footer { text-align: center; padding: 2rem 0 1rem; opacity: 0.5; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1 id="title">🚨 အရေးပေါ်ခေါ်ဆိုရန်</h1>
+        <p id="subtitle">နိုင်ငံရွေးချယ်ပြီး ဖုန်းခေါ်ဆိုနိုင်ပါသည်</p>
+        <div class="lang-select">
+            <button class="active" data-lang="my" onclick="setLang('my')">မြန်မာ</button>
+            <button data-lang="en" onclick="setLang('en')">English</button>
+        </div>
+        <input type="text" class="search-box" id="searchInput" oninput="renderList()" placeholder="🔍 နိုင်ငံအမည်ရှာရန်...">
+    </div>
+    <div id="countryList"></div>
+    <div class="footer">Global Emergency Numbers | ကမ္ဘာလုံးဆိုင်ရာ အရေးပေါ်နံပါတ်များ | ၁၉၀+ နိုင်ငံ</div>
+</div>
+
+<script>
+// ==================== ကမ္ဘာ့နိုင်ငံပေါင်း ၁၉၀+ ====================
+const emergencyData = [
+{en:"Afghanistan",mm:"အာဖဂန်နစ္စတန်",capital:"Kabul",police:"119",ambulance:"112",fire:"119",general:"112"},
+{en:"Albania",mm:"အယ်လ်ဘေးနီးယား",capital:"Tirana",police:"129",ambulance:"127",fire:"128",general:"112"},
+{en:"Algeria",mm:"အယ်လ်ဂျီးရီးယား",capital:"Algiers",police:"17",ambulance:"14",fire:"14",general:""},
+{en:"Andorra",mm:"အင်ဒိုရာ",capital:"Andorra la Vella",police:"110",ambulance:"116",fire:"118",general:"112"},
+{en:"Angola",mm:"အင်ဂိုလာ",capital:"Luanda",police:"113",ambulance:"112",fire:"115",general:""},
+{en:"Antigua and Barbuda",mm:"အန်တီဂွါနှင့် ဘာဘူဒါ",capital:"St. John's",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Argentina",mm:"အာဂျင်တီးနား",capital:"Buenos Aires",police:"101",ambulance:"107",fire:"100",general:"911"},
+{en:"Armenia",mm:"အာမေးနီးယား",capital:"Yerevan",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Australia",mm:"ဩစတြေးလျ",capital:"Canberra",police:"000",ambulance:"000",fire:"000",general:"000"},
+{en:"Austria",mm:"ဩစတြီးယား",capital:"Vienna",police:"133",ambulance:"144",fire:"122",general:"112"},
+{en:"Azerbaijan",mm:"အဇာဘိုင်ဂျန်",capital:"Baku",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Bahamas",mm:"ဘဟားမား",capital:"Nassau",police:"911",ambulance:"911",fire:"911",general:"919"},
+{en:"Bahrain",mm:"ဘာရိန်း",capital:"Manama",police:"999",ambulance:"999",fire:"999",general:"112"},
+{en:"Bangladesh",mm:"ဘင်္ဂလားဒေ့ရှ်",capital:"Dhaka",police:"999",ambulance:"199",fire:"199",general:""},
+{en:"Barbados",mm:"ဘာဘေးဒိုးစ်",capital:"Bridgetown",police:"211",ambulance:"511",fire:"311",general:"911"},
+{en:"Belarus",mm:"ဘီလာရုစ်",capital:"Minsk",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Belgium",mm:"ဘယ်လ်ဂျီယံ",capital:"Brussels",police:"101",ambulance:"100",fire:"100",general:"112"},
+{en:"Belize",mm:"ဘလိဇ်",capital:"Belmopan",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Benin",mm:"ဘီနင်",capital:"Porto-Novo",police:"117",ambulance:"112",fire:"118",general:""},
+{en:"Bhutan",mm:"ဘူတန်",capital:"Thimphu",police:"113",ambulance:"112",fire:"110",general:""},
+{en:"Bolivia",mm:"ဘိုလီးဗီးယား",capital:"Sucre",police:"110",ambulance:"118",fire:"119",general:"911"},
+{en:"Bosnia and Herzegovina",mm:"ဘော့စနီးယား",capital:"Sarajevo",police:"122",ambulance:"124",fire:"123",general:"112"},
+{en:"Botswana",mm:"ဘော့ဆွာနာ",capital:"Gaborone",police:"999",ambulance:"997",fire:"998",general:"112"},
+{en:"Brazil",mm:"ဘရာဇီး",capital:"Brasília",police:"190",ambulance:"192",fire:"193",general:""},
+{en:"Brunei",mm:"ဘရူနိုင်း",capital:"Bandar Seri Begawan",police:"993",ambulance:"991",fire:"995",general:"112"},
+{en:"Bulgaria",mm:"ဘူလ်ဂေးရီးယား",capital:"Sofia",police:"166",ambulance:"150",fire:"160",general:"112"},
+{en:"Burkina Faso",mm:"ဘာကီးနားဖာဆို",capital:"Ouagadougou",police:"17",ambulance:"112",fire:"18",general:""},
+{en:"Burundi",mm:"ဘူရွန်ဒီ",capital:"Gitega",police:"117",ambulance:"112",fire:"118",general:""},
+{en:"Cambodia",mm:"ကမ္ဘောဒီးယား",capital:"Phnom Penh",police:"117",ambulance:"119",fire:"118",general:""},
+{en:"Cameroon",mm:"ကင်မရွန်း",capital:"Yaoundé",police:"112",ambulance:"119",fire:"118",general:""},
+{en:"Canada",mm:"ကနေဒါ",capital:"Ottawa",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Cape Verde",mm:"ကိတ်ဗာဒီ",capital:"Praia",police:"132",ambulance:"130",fire:"131",general:""},
+{en:"Central African Republic",mm:"ဗဟိုအာဖရိက",capital:"Bangui",police:"117",ambulance:"112",fire:"118",general:""},
+{en:"Chad",mm:"ချဒ်",capital:"N'Djamena",police:"17",ambulance:"112",fire:"18",general:""},
+{en:"Chile",mm:"ချီလီ",capital:"Santiago",police:"133",ambulance:"131",fire:"132",general:"911"},
+{en:"China",mm:"တရုတ်",capital:"Beijing",police:"110",ambulance:"120",fire:"119",general:""},
+{en:"Colombia",mm:"ကိုလံဘီယာ",capital:"Bogotá",police:"123",ambulance:"125",fire:"119",general:"123"},
+{en:"Comoros",mm:"ကိုမိုရိုစ်",capital:"Moroni",police:"17",ambulance:"772",fire:"18",general:""},
+{en:"Congo (DRC)",mm:"ကွန်ဂို (ဒီမိုကရက်တစ်)",capital:"Kinshasa",police:"117",ambulance:"112",fire:"118",general:""},
+{en:"Congo (Republic)",mm:"ကွန်ဂို (သမ္မတ)",capital:"Brazzaville",police:"117",ambulance:"112",fire:"118",general:""},
+{en:"Costa Rica",mm:"ကို့စတာရီကာ",capital:"San José",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Croatia",mm:"ခရိုအေးရှား",capital:"Zagreb",police:"192",ambulance:"194",fire:"193",general:"112"},
+{en:"Cuba",mm:"ကျူးဘား",capital:"Havana",police:"106",ambulance:"104",fire:"105",general:""},
+{en:"Cyprus",mm:"ဆိုက်ပရက်စ်",capital:"Nicosia",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Czech Republic",mm:"ချက်သမ္မတ",capital:"Prague",police:"158",ambulance:"155",fire:"150",general:"112"},
+{en:"Denmark",mm:"ဒိန်းမတ်",capital:"Copenhagen",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Djibouti",mm:"ဂျီဘူတီ",capital:"Djibouti City",police:"17",ambulance:"19",fire:"18",general:""},
+{en:"Dominica",mm:"ဒိုမီနီကာ",capital:"Roseau",police:"999",ambulance:"999",fire:"999",general:""},
+{en:"Dominican Republic",mm:"ဒိုမီနီကန်",capital:"Santo Domingo",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Ecuador",mm:"အီကွေဒေါ",capital:"Quito",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Egypt",mm:"အီဂျစ်",capital:"Cairo",police:"122",ambulance:"123",fire:"180",general:""},
+{en:"El Salvador",mm:"အယ်လ်ဆာဗေးဒေါ",capital:"San Salvador",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Equatorial Guinea",mm:"အီကွေတာဂီနီ",capital:"Malabo",police:"114",ambulance:"112",fire:"115",general:""},
+{en:"Eritrea",mm:"အီရီထရီးယား",capital:"Asmara",police:"113",ambulance:"114",fire:"116",general:""},
+{en:"Estonia",mm:"အက်စတိုးနီးယား",capital:"Tallinn",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Eswatini",mm:"အက်စဝါတီနီ",capital:"Mbabane",police:"999",ambulance:"977",fire:"933",general:""},
+{en:"Ethiopia",mm:"အီသီယိုးပီးယား",capital:"Addis Ababa",police:"991",ambulance:"907",fire:"939",general:"911"},
+{en:"Fiji",mm:"ဖီဂျီ",capital:"Suva",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Finland",mm:"ဖင်လန်",capital:"Helsinki",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"France",mm:"ပြင်သစ်",capital:"Paris",police:"17",ambulance:"15",fire:"18",general:"112"},
+{en:"Gabon",mm:"ဂါဘွန်",capital:"Libreville",police:"1730",ambulance:"1300",fire:"18",general:""},
+{en:"Gambia",mm:"ဂမ်ဘီယာ",capital:"Banjul",police:"117",ambulance:"116",fire:"118",general:""},
+{en:"Georgia",mm:"ဂျော်ဂျီယာ",capital:"Tbilisi",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Germany",mm:"ဂျာမနီ",capital:"Berlin",police:"110",ambulance:"112",fire:"112",general:"112"},
+{en:"Ghana",mm:"ဂါနာ",capital:"Accra",police:"191",ambulance:"193",fire:"192",general:"112"},
+{en:"Greece",mm:"ဂရိ",capital:"Athens",police:"100",ambulance:"166",fire:"199",general:"112"},
+{en:"Grenada",mm:"ဂရီနေဒါ",capital:"St. George's",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Guatemala",mm:"ဂွါတီမာလာ",capital:"Guatemala City",police:"110",ambulance:"120",fire:"122",general:"911"},
+{en:"Guinea",mm:"ဂီနီ",capital:"Conakry",police:"117",ambulance:"18",fire:"18",general:""},
+{en:"Guinea-Bissau",mm:"ဂီနီဘစ်စော",capital:"Bissau",police:"117",ambulance:"112",fire:"118",general:""},
+{en:"Guyana",mm:"ဂိုင်ယာနာ",capital:"Georgetown",police:"911",ambulance:"913",fire:"912",general:""},
+{en:"Haiti",mm:"ဟေတီ",capital:"Port-au-Prince",police:"114",ambulance:"116",fire:"115",general:""},
+{en:"Honduras",mm:"ဟွန်ဒူးရပ်စ်",capital:"Tegucigalpa",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Hungary",mm:"ဟန်ဂေရီ",capital:"Budapest",police:"107",ambulance:"104",fire:"105",general:"112"},
+{en:"Iceland",mm:"အိုက်စလန်",capital:"Reykjavik",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"India",mm:"အိန္ဒိယ",capital:"New Delhi",police:"100",ambulance:"102",fire:"101",general:"112"},
+{en:"Indonesia",mm:"အင်ဒိုနီးရှား",capital:"Jakarta",police:"110",ambulance:"118",fire:"113",general:"112"},
+{en:"Iran",mm:"အီရန်",capital:"Tehran",police:"110",ambulance:"115",fire:"125",general:""},
+{en:"Iraq",mm:"အီရတ်",capital:"Baghdad",police:"104",ambulance:"122",fire:"115",general:""},
+{en:"Ireland",mm:"အိုင်ယာလန်",capital:"Dublin",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Israel",mm:"အစ္စရေး",capital:"Jerusalem",police:"100",ambulance:"101",fire:"102",general:"112"},
+{en:"Italy",mm:"အီတလီ",capital:"Rome",police:"112",ambulance:"118",fire:"115",general:"112"},
+{en:"Jamaica",mm:"ဂျမေကာ",capital:"Kingston",police:"119",ambulance:"110",fire:"110",general:"112"},
+{en:"Japan",mm:"ဂျပန်",capital:"Tokyo",police:"110",ambulance:"119",fire:"119",general:""},
+{en:"Jordan",mm:"ဂျော်ဒန်",capital:"Amman",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Kazakhstan",mm:"ကာဇက်စတန်",capital:"Astana",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Kenya",mm:"ကင်ညာ",capital:"Nairobi",police:"999",ambulance:"999",fire:"999",general:"112"},
+{en:"Kiribati",mm:"ကီရီဘာတီ",capital:"Tarawa",police:"999",ambulance:"999",fire:"999",general:""},
+{en:"Kuwait",mm:"ကူဝိတ်",capital:"Kuwait City",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Kyrgyzstan",mm:"ကာဂျစ္စတန်",capital:"Bishkek",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Laos",mm:"လာအို",capital:"Vientiane",police:"191",ambulance:"195",fire:"190",general:""},
+{en:"Latvia",mm:"လတ်ဗီယာ",capital:"Riga",police:"112",ambulance:"113",fire:"110",general:"112"},
+{en:"Lebanon",mm:"လက်ဘနွန်",capital:"Beirut",police:"112",ambulance:"140",fire:"175",general:""},
+{en:"Lesotho",mm:"လီဆိုသို",capital:"Maseru",police:"123",ambulance:"121",fire:"122",general:""},
+{en:"Liberia",mm:"လိုက်ဘေးရီးယား",capital:"Monrovia",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Libya",mm:"လစ်ဗျား",capital:"Tripoli",police:"1515",ambulance:"193",fire:"193",general:""},
+{en:"Liechtenstein",mm:"လစ်ချ်တင်စတိန်း",capital:"Vaduz",police:"117",ambulance:"144",fire:"118",general:"112"},
+{en:"Lithuania",mm:"လစ်သူယေးနီးယား",capital:"Vilnius",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Luxembourg",mm:"လူဇင်ဘတ်",capital:"Luxembourg City",police:"113",ambulance:"112",fire:"112",general:"112"},
+{en:"Madagascar",mm:"မဒါဂတ်စကာ",capital:"Antananarivo",police:"117",ambulance:"124",fire:"118",general:""},
+{en:"Malawi",mm:"မာလဝီ",capital:"Lilongwe",police:"997",ambulance:"998",fire:"999",general:""},
+{en:"Malaysia",mm:"မလေးရှား",capital:"Kuala Lumpur",police:"999",ambulance:"999",fire:"999",general:"112"},
+{en:"Maldives",mm:"မော်လဒိုက်",capital:"Malé",police:"119",ambulance:"102",fire:"118",general:""},
+{en:"Mali",mm:"မာလီ",capital:"Bamako",police:"17",ambulance:"15",fire:"18",general:""},
+{en:"Malta",mm:"မော်လ်တာ",capital:"Valletta",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Marshall Islands",mm:"မာရှယ်ကျွန်းစု",capital:"Majuro",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Mauritania",mm:"မောရီတေးနီးယား",capital:"Nouakchott",police:"117",ambulance:"101",fire:"118",general:""},
+{en:"Mauritius",mm:"မောရစ်ရှပ်",capital:"Port Louis",police:"999",ambulance:"114",fire:"115",general:"112"},
+{en:"Mexico",mm:"မက္ကဆီကို",capital:"Mexico City",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Micronesia",mm:"မိုက်ခရိုနီးရှား",capital:"Palikir",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Moldova",mm:"မော်လ်ဒိုဗာ",capital:"Chișinău",police:"902",ambulance:"903",fire:"901",general:"112"},
+{en:"Monaco",mm:"မိုနာကို",capital:"Monaco",police:"17",ambulance:"15",fire:"18",general:"112"},
+{en:"Mongolia",mm:"မွန်ဂိုးလီးယား",capital:"Ulaanbaatar",police:"102",ambulance:"103",fire:"101",general:""},
+{en:"Montenegro",mm:"မွန်တီနီဂရိုး",capital:"Podgorica",police:"122",ambulance:"124",fire:"123",general:"112"},
+{en:"Morocco",mm:"မော်ရိုကို",capital:"Rabat",police:"19",ambulance:"15",fire:"15",general:"112"},
+{en:"Mozambique",mm:"မိုဇမ်ဘစ်",capital:"Maputo",police:"119",ambulance:"117",fire:"198",general:""},
+{en:"Myanmar",mm:"မြန်မာ",capital:"နေပြည်တော်",police:"199",ambulance:"192",fire:"191",general:""},
+{en:"Namibia",mm:"နမီးဘီးယား",capital:"Windhoek",police:"10111",ambulance:"203",fire:"203",general:""},
+{en:"Nauru",mm:"နအူရူး",capital:"Yaren",police:"110",ambulance:"111",fire:"112",general:""},
+{en:"Nepal",mm:"နီပေါ",capital:"Kathmandu",police:"100",ambulance:"102",fire:"101",general:"112"},
+{en:"Netherlands",mm:"နယ်သာလန်",capital:"Amsterdam",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"New Zealand",mm:"နယူးဇီလန်",capital:"Wellington",police:"111",ambulance:"111",fire:"111",general:"111"},
+{en:"Nicaragua",mm:"နီကာရာဂွါ",capital:"Managua",police:"118",ambulance:"128",fire:"115",general:"911"},
+{en:"Niger",mm:"နိုင်ဂျာ",capital:"Niamey",police:"17",ambulance:"15",fire:"18",general:""},
+{en:"Nigeria",mm:"နိုင်ဂျီးရီးယား",capital:"Abuja",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"North Korea",mm:"မြောက်ကိုရီးယား",capital:"Pyongyang",police:"119",ambulance:"119",fire:"119",general:""},
+{en:"North Macedonia",mm:"မြောက်မက်ဆီဒိုးနီးယား",capital:"Skopje",police:"192",ambulance:"194",fire:"193",general:"112"},
+{en:"Norway",mm:"နော်ဝေ",capital:"Oslo",police:"112",ambulance:"113",fire:"110",general:"112"},
+{en:"Oman",mm:"အိုမန်",capital:"Muscat",police:"9999",ambulance:"9999",fire:"9999",general:""},
+{en:"Pakistan",mm:"ပါကစ္စတန်",capital:"Islamabad",police:"15",ambulance:"115",fire:"16",general:"1122"},
+{en:"Palau",mm:"ပလောင်း",capital:"Ngerulmud",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Palestine",mm:"ပါလက်စတိုင်း",capital:"Ramallah",police:"100",ambulance:"101",fire:"102",general:""},
+{en:"Panama",mm:"ပနားမား",capital:"Panama City",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Papua New Guinea",mm:"ပါပူအာနယူးဂီနီ",capital:"Port Moresby",police:"000",ambulance:"111",fire:"000",general:""},
+{en:"Paraguay",mm:"ပါရာဂွေး",capital:"Asunción",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Peru",mm:"ပီရူး",capital:"Lima",police:"105",ambulance:"106",fire:"116",general:"911"},
+{en:"Philippines",mm:"ဖိလစ်ပိုင်",capital:"Manila",police:"117",ambulance:"911",fire:"911",general:"911"},
+{en:"Poland",mm:"ပိုလန်",capital:"Warsaw",police:"997",ambulance:"999",fire:"998",general:"112"},
+{en:"Portugal",mm:"ပေါ်တူဂီ",capital:"Lisbon",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Qatar",mm:"ကာတာ",capital:"Doha",police:"999",ambulance:"999",fire:"999",general:""},
+{en:"Romania",mm:"ရိုမေးနီးယား",capital:"Bucharest",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Russia",mm:"ရုရှား",capital:"Moscow",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Rwanda",mm:"ရဝမ်ဒါ",capital:"Kigali",police:"112",ambulance:"912",fire:"111",general:""},
+{en:"Saint Kitts and Nevis",mm:"စိန့်ကစ်နှင့်နီးဗစ်",capital:"Basseterre",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Saint Lucia",mm:"စိန့်လူစီယာ",capital:"Castries",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Saint Vincent",mm:"စိန့်ဗင်းဆင့်",capital:"Kingstown",police:"999",ambulance:"999",fire:"999",general:""},
+{en:"Samoa",mm:"ဆမိုအာ",capital:"Apia",police:"995",ambulance:"996",fire:"994",general:""},
+{en:"San Marino",mm:"ဆန်မာရီနို",capital:"San Marino",police:"113",ambulance:"118",fire:"115",general:"112"},
+{en:"Sao Tome and Principe",mm:"ဆောင်တူမေးနှင့်ပရင်စီပီ",capital:"São Tomé",police:"112",ambulance:"112",fire:"112",general:""},
+{en:"Saudi Arabia",mm:"ဆော်ဒီအာရေဗျ",capital:"Riyadh",police:"999",ambulance:"997",fire:"998",general:"911"},
+{en:"Senegal",mm:"ဆီနီဂေါ",capital:"Dakar",police:"17",ambulance:"15",fire:"18",general:"112"},
+{en:"Serbia",mm:"ဆားဘီးယား",capital:"Belgrade",police:"192",ambulance:"194",fire:"193",general:"112"},
+{en:"Seychelles",mm:"ဆေးရှဲလ်",capital:"Victoria",police:"999",ambulance:"999",fire:"999",general:""},
+{en:"Sierra Leone",mm:"ဆီရာလီယွန်",capital:"Freetown",police:"019",ambulance:"999",fire:"999",general:""},
+{en:"Singapore",mm:"စင်ကာပူ",capital:"Singapore",police:"999",ambulance:"995",fire:"995",general:""},
+{en:"Slovakia",mm:"ဆလိုဗက်ကီးယား",capital:"Bratislava",police:"158",ambulance:"155",fire:"150",general:"112"},
+{en:"Slovenia",mm:"ဆလိုဗေးနီးယား",capital:"Ljubljana",police:"113",ambulance:"112",fire:"112",general:"112"},
+{en:"Solomon Islands",mm:"ဆော်လမွန်ကျွန်းစု",capital:"Honiara",police:"999",ambulance:"911",fire:"911",general:""},
+{en:"Somalia",mm:"ဆိုမာလီယာ",capital:"Mogadishu",police:"888",ambulance:"999",fire:"555",general:""},
+{en:"South Africa",mm:"တောင်အာဖရိက",capital:"Pretoria",police:"10111",ambulance:"10177",fire:"10177",general:"112"},
+{en:"South Korea",mm:"တောင်ကိုရီးယား",capital:"Seoul",police:"112",ambulance:"119",fire:"119",general:""},
+{en:"South Sudan",mm:"တောင်ဆူဒန်",capital:"Juba",police:"777",ambulance:"999",fire:"999",general:""},
+{en:"Spain",mm:"စပိန်",capital:"Madrid",police:"091",ambulance:"061",fire:"080",general:"112"},
+{en:"Sri Lanka",mm:"သီရိလင်္ကာ",capital:"Colombo",police:"119",ambulance:"110",fire:"111",general:""},
+{en:"Sudan",mm:"ဆူဒန်",capital:"Khartoum",police:"999",ambulance:"999",fire:"999",general:""},
+{en:"Suriname",mm:"ဆူရီနမ်း",capital:"Paramaribo",police:"115",ambulance:"113",fire:"110",general:""},
+{en:"Sweden",mm:"ဆွီဒင်",capital:"Stockholm",police:"112",ambulance:"112",fire:"112",general:"112"},
+{en:"Switzerland",mm:"ဆွစ်ဇာလန်",capital:"Bern",police:"117",ambulance:"144",fire:"118",general:"112"},
+{en:"Syria",mm:"ဆီးရီးယား",capital:"Damascus",police:"112",ambulance:"110",fire:"113",general:""},
+{en:"Taiwan",mm:"ထိုင်ဝမ်",capital:"Taipei",police:"110",ambulance:"119",fire:"119",general:""},
+{en:"Tajikistan",mm:"တာဂျစ်ကစ္စတန်",capital:"Dushanbe",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Tanzania",mm:"တန်ဇန်းနီးယား",capital:"Dodoma",police:"112",ambulance:"114",fire:"115",general:""},
+{en:"Thailand",mm:"ထိုင်း",capital:"Bangkok",police:"191",ambulance:"1669",fire:"199",general:"112"},
+{en:"Timor-Leste",mm:"အရှေ့တီမော",capital:"Dili",police:"112",ambulance:"112",fire:"112",general:""},
+{en:"Togo",mm:"တိုဂို",capital:"Lomé",police:"117",ambulance:"118",fire:"119",general:""},
+{en:"Tonga",mm:"တွန်ဂါ",capital:"Nuku'alofa",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Trinidad and Tobago",mm:"ထရီနီဒတ်နှင့်တိုဘက်ဂို",capital:"Port of Spain",police:"999",ambulance:"811",fire:"990",general:""},
+{en:"Tunisia",mm:"တူနီးရှား",capital:"Tunis",police:"197",ambulance:"190",fire:"198",general:""},
+{en:"Turkey",mm:"တူရကီ",capital:"Ankara",police:"155",ambulance:"112",fire:"110",general:"112"},
+{en:"Turkmenistan",mm:"တာ့ခ်မင်နစ္စတန်",capital:"Ashgabat",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Tuvalu",mm:"တူဗားလူ",capital:"Funafuti",police:"911",ambulance:"911",fire:"911",general:""},
+{en:"Uganda",mm:"ယူဂန်ဒါ",capital:"Kampala",police:"999",ambulance:"911",fire:"112",general:""},
+{en:"Ukraine",mm:"ယူကရိန်း",capital:"Kyiv",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"UAE",mm:"အာရပ်စော်ဘွားများ",capital:"Abu Dhabi",police:"999",ambulance:"998",fire:"997",general:"999"},
+{en:"United Kingdom",mm:"ယူနိုက်တက်ကင်းဒမ်း",capital:"London",police:"999",ambulance:"999",fire:"999",general:"112"},
+{en:"United States",mm:"အမေရိကန်",capital:"Washington, D.C.",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Uruguay",mm:"ဥရုဂွေး",capital:"Montevideo",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Uzbekistan",mm:"ဥဇဘက်ကစ္စတန်",capital:"Tashkent",police:"102",ambulance:"103",fire:"101",general:"112"},
+{en:"Vanuatu",mm:"ဗာနူအာတူ",capital:"Port Vila",police:"111",ambulance:"112",fire:"113",general:""},
+{en:"Vatican City",mm:"ဗာတီကန်စီးတီး",capital:"Vatican City",police:"113",ambulance:"118",fire:"115",general:"112"},
+{en:"Venezuela",mm:"ဗင်နီဇွဲလား",capital:"Caracas",police:"911",ambulance:"911",fire:"911",general:"911"},
+{en:"Vietnam",mm:"ဗီယက်နမ်",capital:"Hanoi",police:"113",ambulance:"115",fire:"114",general:""},
+{en:"Yemen",mm:"ယီမင်",capital:"Sanaa",police:"194",ambulance:"191",fire:"191",general:""},
+{en:"Zambia",mm:"ဇမ်ဘီယာ",capital:"Lusaka",police:"999",ambulance:"992",fire:"993",general:""},
+{en:"Zimbabwe",mm:"ဇင်ဘာဘွေ",capital:"Harare",police:"999",ambulance:"994",fire:"993",general:""}
+];
+
+// ==================== ဘာသာပြန် ====================
+const translations = {
+    my:{title:"🚨 အရေးပေါ်ခေါ်ဆိုရန်",subtitle:"နိုင်ငံရွေးချယ်ပြီး ဖုန်းခေါ်ဆိုနိုင်ပါသည်",search:"နိုင်ငံအမည်ရှာရန်...",noResult:"နိုင်ငံမတွေ့ပါ",police:"ရဲ",ambulance:"လူနာတင်",fire:"မီးသတ်",general:"အထွေထွေ"},
+    en:{title:"🚨 Emergency Calls",subtitle:"Select country and call directly",search:"Search country...",noResult:"No countries found",police:"Police",ambulance:"Ambulance",fire:"Fire",general:"General"}
+};
+let lang="my";
+function setLang(l){lang=l;let t=translations[l];
+document.getElementById("title").textContent=t.title;
+document.getElementById("subtitle").textContent=t.subtitle;
+document.getElementById("searchInput").placeholder="🔍 "+t.search;
+document.querySelectorAll(".lang-select button").forEach(b=>b.classList.remove("active"));
+document.querySelector(`.lang-select button[data-lang="${l}"]`).classList.add("active");
+renderList();}
+
+function renderList(){
+let s=document.getElementById("searchInput").value.toLowerCase();
+let t=translations[lang];
+let f=emergencyData.filter(c=>c.en.toLowerCase().includes(s)||c.mm.toLowerCase().includes(s));
+let c=document.getElementById("countryList");
+if(!f.length){c.innerHTML=`<p class="no-results">${t.noResult}</p>`;return;}
+c.innerHTML=f.map(x=>{
+let name=lang==="my"?x.mm:x.en;
+let btns="";
+if(x.police)btns+=`<a href="tel:${x.police}" class="call-btn">👮 ${t.police}: ${x.police}</a>`;
+if(x.ambulance)btns+=`<a href="tel:${x.ambulance}" class="call-btn">🚑 ${t.ambulance}: ${x.ambulance}</a>`;
+if(x.fire)btns+=`<a href="tel:${x.fire}" class="call-btn">🚒 ${t.fire}: ${x.fire}</a>`;
+if(x.general)btns+=`<a href="tel:${x.general}" class="call-btn">🆘 ${t.general}: ${x.general}</a>`;
+return `<div class="country-card"><div class="country-header"><span class="country-name">${name}</span><span class="country-capital">📍 ${x.capital}</span></div><div class="number-list">${btns}</div></div>`;}).join("");}
+setLang("my");
+</script>
+</body>
+</html>
